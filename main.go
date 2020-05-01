@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/libgit2/git2go/v30"
 )
 
@@ -13,7 +15,7 @@ func getParents(commit *git.Commit) []*git.Commit {
 	return parents
 }
 
-func mapParentsToChildren(repo *git.Repository) (map[string]string, error) {
+func mapParentsToChildren(start string, repo *git.Repository) (map[string]string, error) {
 	walker, err := repo.Walk()
 	if err != nil {
 		return nil, err
@@ -21,7 +23,7 @@ func mapParentsToChildren(repo *git.Repository) (map[string]string, error) {
 
 	// Map parents to children
 	children := make(map[string]string)
-	err = walker.PushRange("6aa7251598346f458f1221d6866080e7e7f909db..HEAD")
+	err = walker.PushRange(fmt.Sprintf("%s..HEAD", start))
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +48,7 @@ func getCommit(hash string, repo *git.Repository) (*git.Commit, error) {
 	return commit, err
 }
 
-func foo(
+func update(
 	hash string,
 	parent string,
 	oldParent string,
@@ -87,7 +89,7 @@ func foo(
 	newHead := oid
 	//fmt.Println(hash, oid.String())
 	if ch, ok := children[hash]; ok {
-		res, err := foo(ch, oid.String(), hash, repo, children, newMsg)
+		res, err := update(ch, oid.String(), hash, repo, children, newMsg)
 		if err != nil {
 			return nil, err
 		}
@@ -100,25 +102,26 @@ func foo(
 }
 
 func main() {
-	//argsWithoutProg := os.Args[1:]
+	hash := os.Args[1]
+	msg := os.Args[2]
 
-	//repo, err := git.OpenRepository("/Users/chingachgook/dev/django-like-queryset/.git")
-	repo, err := git.OpenRepository("intellij-community/.git")
+	repo, err := git.OpenRepository(".git")
 	if err != nil {
 		panic(err)
 	}
 
-	children, err := mapParentsToChildren(repo)
-	if err != nil {
-		panic(err)
-	}
+	obj, _ := getCommit(hash, repo)
+	c, _ := obj.AsCommit()
 
-	//fmt.Println(children)
-
-	start := "6aa7251598346f458f1221d6866080e7e7f909db"
+	start := c.Id().String()
 	newMsg := make(map[string]string)
-	newMsg["6aa7251598346f458f1221d6866080e7e7f909db"] = "test2"
-	newHead, err := foo(start, "", "", repo, children, newMsg)
+	newMsg[start] = msg
+
+	children, err := mapParentsToChildren(start, repo)
+	if err != nil {
+		panic(err)
+	}
+	newHead, err := update(start, "", "", repo, children, newMsg)
 	if err != nil {
 		panic(err)
 	}
@@ -133,6 +136,4 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	//fmt.Println(children)
 }
