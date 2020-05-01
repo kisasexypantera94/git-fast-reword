@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/libgit2/git2go/v30"
+	"github.com/urfave/cli/v2"
 )
 
 func getParents(commit *git.Commit) []*git.Commit {
@@ -102,37 +103,61 @@ func update(
 }
 
 func main() {
-	hash := os.Args[1]
-	msg := os.Args[2]
+	app := &cli.App{
+		Name:                 "git-fast-reword",
+		Usage:                "git-fast-reword hash new_message",
+		EnableBashCompletion: true,
+		Action: func(c *cli.Context) error {
+			args := c.Args()
+			if args.Len() < 2 {
+				return fmt.Errorf("invalid number of arguments")
+			}
+			hash := args.Get(0)
+			msg := args.Get(1)
 
-	repo, err := git.OpenRepository(".git")
-	if err != nil {
-		panic(err)
+			repo, err := git.OpenRepository(".git")
+			if err != nil {
+				return err
+			}
+
+			obj, err := getCommit(hash, repo)
+			if err != nil {
+				return err
+			}
+			commit, err := obj.AsCommit()
+			if err != nil {
+				return err
+			}
+
+			start := commit.Id().String()
+			newMsg := make(map[string]string)
+			newMsg[start] = msg
+
+			children, err := mapParentsToChildren(start, repo)
+			if err != nil {
+				return err
+			}
+			newHead, err := update(start, "", "", repo, children, newMsg)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(newHead)
+
+			ref, err := repo.References.Lookup("refs/heads/master")
+			if err != nil {
+				return err
+			}
+			_, err = ref.SetTarget(newHead, "")
+			if err != nil {
+				return err
+			}
+
+			return nil
+		},
 	}
 
-	obj, _ := getCommit(hash, repo)
-	c, _ := obj.AsCommit()
-
-	start := c.Id().String()
-	newMsg := make(map[string]string)
-	newMsg[start] = msg
-
-	children, err := mapParentsToChildren(start, repo)
-	if err != nil {
-		panic(err)
-	}
-	newHead, err := update(start, "", "", repo, children, newMsg)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(newHead)
-
-	ref, err := repo.References.Lookup("refs/heads/master")
-	if err != nil {
-		panic(err)
-	}
-	_, err = ref.SetTarget(newHead, "")
+	err := app.Run(os.Args)
 	if err != nil {
 		panic(err)
 	}
