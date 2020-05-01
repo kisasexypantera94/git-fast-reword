@@ -13,24 +13,23 @@ func getParents(commit *git.Commit) []*git.Commit {
 	return parents
 }
 
-func mapParentsToChildren(repo *git.Repository) (map[string][]string, error) {
+func mapParentsToChildren(repo *git.Repository) (map[string]string, error) {
 	walker, err := repo.Walk()
 	if err != nil {
 		return nil, err
 	}
 
-	err = walker.PushRef("HEAD")
+	// Map parents to children
+	children := make(map[string]string)
+	err = walker.PushRange("6aa7251598346f458f1221d6866080e7e7f909db..HEAD")
 	if err != nil {
 		return nil, err
 	}
-
-	// Map parents to children
-	children := make(map[string][]string)
 	err = walker.Iterate(func(commit *git.Commit) bool {
 		parents := getParents(commit)
 		for _, p := range parents {
 			pid := p.Id().String()
-			children[pid] = append(children[pid], commit.Id().String())
+			children[pid] = commit.Id().String()
 		}
 		return true
 	})
@@ -52,7 +51,7 @@ func foo(
 	parent string,
 	oldParent string,
 	repo *git.Repository,
-	children map[string][]string,
+	children map[string]string,
 	newMsg map[string]string,
 ) (*git.Oid, error) {
 	commit, err := getCommit(hash, repo)
@@ -84,8 +83,10 @@ func foo(
 	if err != nil {
 		return nil, err
 	}
+
 	newHead := oid
-	for _, ch := range children[hash] {
+	//fmt.Println(hash, oid.String())
+	if ch, ok := children[hash]; ok {
 		res, err := foo(ch, oid.String(), hash, repo, children, newMsg)
 		if err != nil {
 			return nil, err
@@ -101,8 +102,8 @@ func foo(
 func main() {
 	//argsWithoutProg := os.Args[1:]
 
-	repo, err := git.OpenRepository("/Users/chingachgook/dev/django-like-queryset/.git")
-	//repo, err := git.OpenRepository("intellij-community/.git")
+	//repo, err := git.OpenRepository("/Users/chingachgook/dev/django-like-queryset/.git")
+	repo, err := git.OpenRepository("intellij-community/.git")
 	if err != nil {
 		panic(err)
 	}
@@ -112,11 +113,11 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(children)
+	//fmt.Println(children)
 
-	start := "d313b6038578ecd90ef41aa8c8bc64fcb6889662"
+	start := "6aa7251598346f458f1221d6866080e7e7f909db"
 	newMsg := make(map[string]string)
-	newMsg["d313b6038578ecd90ef41aa8c8bc64fcb6889662"] = "iluv git"
+	newMsg["6aa7251598346f458f1221d6866080e7e7f909db"] = "test2"
 	newHead, err := foo(start, "", "", repo, children, newMsg)
 	if err != nil {
 		panic(err)
