@@ -42,23 +42,18 @@ func main() {
 			newMsg := make(map[string]string)
 			newMsg[start] = msg + "\n"
 
-			children, oldest, err := utilite.MapParentsToChildren(start, repo)
-			if err != nil {
-				return err
-			}
-			log.Printf("Oldest commit: %s", oldest.Id().String())
-			newHead, err := utilite.Update(oldest.Id().String(), "", "", repo, children, newMsg)
+			newHead, err := utilite.Update(start, repo, newMsg)
 			if err != nil {
 				return err
 			}
 
-			log.Printf("New head: %s", newHead)
+			log.Printf("New head: %s", newHead.Id().String())
 
 			ref, err := repo.References.Lookup("refs/heads/master")
 			if err != nil {
 				return err
 			}
-			_, err = ref.SetTarget(newHead, "")
+			_, err = ref.SetTarget(newHead.Id(), "")
 			if err != nil {
 				return err
 			}

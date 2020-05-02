@@ -1,6 +1,16 @@
 package utilite
 
-import git "github.com/libgit2/git2go/v30"
+import (
+	git "github.com/libgit2/git2go/v30"
+)
+
+func copyMap(m map[string]bool) map[string]bool {
+	nm := make(map[string]bool)
+	for k, v := range m {
+		nm[k] = v
+	}
+	return nm
+}
 
 func GetCommit(hash string, repo *git.Repository) (*git.Commit, error) {
 	obj, err := repo.RevparseSingle(hash)
@@ -19,85 +29,43 @@ func getParents(commit *git.Commit) []*git.Commit {
 	return parents
 }
 
-// iterateUntilVisited fills children map.
-// It does DFS until  all the places are visited
-// and then returns oldest place visited.
-func iterateUntilVisited(
+// updateCommit recursively updates
+// all commits dependent of renamed ones.
+// It does this by doing DFS.
+func updateCommit(
 	commit *git.Commit,
 	places map[string]bool,
 	counter int,
 	children map[string][]string,
-) (oldest *git.Commit, err error) {
+	newMsg map[string]string,
+	repo *git.Repository,
+) (*git.Commit, error) {
+	// Check if current commit is to be renamed
 	cid := commit.Id().String()
 	if visited, ok := places[cid]; ok && !visited {
 		counter += 1
 	}
 
-	if counter == len(places) {
-		return commit, nil
-	}
-
 	parents := getParents(commit)
-	for _, p := range parents {
-		pid := p.Id().String()
-		children[pid] = append(children[pid], commit.Id().String())
-		pc, err := p.AsCommit()
-		if err != nil {
-			return nil, err
+	// if there are still commits to be visited then do recursion
+	// and update current commit parents
+	if counter < len(places) {
+		for i, p := range parents {
+			pid := p.Id().String()
+			children[pid] = append(children[pid], commit.Id().String())
+			res, err := updateCommit(p, copyMap(places), counter, children, newMsg, repo)
+			if err != nil {
+				return nil, err
+			}
+			// update parent
+			parents[i] = res
 		}
-		oldest, err = iterateUntilVisited(pc, places, counter, children)
-		if err != nil {
-			return nil, err
-		}
-		if oldest != nil {
-			return oldest, nil
-		}
-	}
-
-	return nil, nil
-}
-
-func MapParentsToChildren(start string, repo *git.Repository) (map[string][]string, *git.Commit, error) {
-	children := make(map[string][]string)
-	places := map[string]bool{start: false}
-	head, err := GetCommit("HEAD", repo)
-	if err != nil {
-		return nil, nil, err
-	}
-	oldest, err := iterateUntilVisited(head, places, 0, children)
-	return children, oldest, err
-}
-
-func Update(
-	hash string,
-	parent string,
-	oldParent string,
-	repo *git.Repository,
-	children map[string][]string,
-	newMsg map[string]string,
-) (*git.Oid, error) {
-	// Get current commit
-	commit, err := GetCommit(hash, repo)
-	if err != nil {
-		return nil, err
 	}
 
 	// Get message and update if needed
 	message := commit.Message()
-	if newMsg, ok := newMsg[hash]; ok {
+	if newMsg, ok := newMsg[commit.Id().String()]; ok {
 		message = newMsg
-	}
-
-	// Get parents and update old parent hash
-	parents := getParents(commit)
-	for i, p := range parents {
-		if p.Id().String() == oldParent {
-			pCommit, err := GetCommit(parent, repo)
-			if err != nil {
-				return nil, err
-			}
-			parents[i] = pCommit
-		}
 	}
 
 	tree, err := commit.Tree()
@@ -116,17 +84,21 @@ func Update(
 		return nil, err
 	}
 
-	// Mark created commit as current head
-	newHead := oid
-	for _, ch := range children[hash] {
-		res, err := Update(ch, oid.String(), hash, repo, children, newMsg)
-		if err != nil {
-			return nil, err
-		}
-		if res != nil {
-			newHead = res
-		}
-	}
+	newCommit, err := GetCommit(oid.String(), repo)
+	return newCommit, err
+}
 
-	return newHead, nil
+func Update(
+	hash string,
+	repo *git.Repository,
+	newMsg map[string]string,
+) (*git.Commit, error) {
+	children := make(map[string][]string)
+	places := map[string]bool{hash: false}
+	head, err := GetCommit("HEAD", repo)
+	if err != nil {
+		return nil, err
+	}
+	newHead, err := updateCommit(head, places, 0, children, newMsg, repo)
+	return newHead, err
 }
