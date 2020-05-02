@@ -66,6 +66,7 @@ func updateCommit(
 	// and update current commit parents
 	if counter < len(places) {
 		for i, p := range parents {
+			// TODO: iterative
 			res, err := updateCommit(p, copyMap(places), visited, counter, newMsg, repo)
 			if err != nil {
 				return nil, err
@@ -103,6 +104,7 @@ func updateCommit(
 
 	newCommit, err := GetCommit(oid.String(), repo)
 	visited[commit.Id().String()] = newCommit
+
 	return newCommit, err
 }
 

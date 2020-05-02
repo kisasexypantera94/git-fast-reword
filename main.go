@@ -49,7 +49,7 @@ func main() {
 						if err != nil {
 							return err
 						}
-						newMsg[c.Id().String()] = v
+						newMsg[c.Id().String()] = v + "\n"
 					}
 
 					newHead, err := utilite.Update(repo, newMsg)
