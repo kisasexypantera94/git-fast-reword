@@ -29,21 +29,37 @@ func getParents(commit *git.Commit) []*git.Commit {
 	return parents
 }
 
+var keks = 0
+
 // updateCommit recursively updates
 // all commits dependent of renamed ones.
 // It does this by doing DFS.
 func updateCommit(
 	commit *git.Commit,
 	places map[string]bool,
+	visited map[string]*git.Commit,
 	counter int,
-	children map[string][]string,
 	newMsg map[string]string,
 	repo *git.Repository,
 ) (*git.Commit, error) {
+	// Check if current commit was already updated
+	if newCommit, ok := visited[commit.Id().String()]; ok {
+		return newCommit, nil
+	}
+
 	// Check if current commit is to be renamed
 	cid := commit.Id().String()
 	if visited, ok := places[cid]; ok && !visited {
 		counter += 1
+	}
+
+	changed := false
+
+	// Get message and update if needed
+	message := commit.Message()
+	if newMsg, ok := newMsg[commit.Id().String()]; ok {
+		message = newMsg
+		changed = true
 	}
 
 	parents := getParents(commit)
@@ -51,21 +67,23 @@ func updateCommit(
 	// and update current commit parents
 	if counter < len(places) {
 		for i, p := range parents {
-			pid := p.Id().String()
-			children[pid] = append(children[pid], commit.Id().String())
-			res, err := updateCommit(p, copyMap(places), counter, children, newMsg, repo)
+			res, err := updateCommit(p, copyMap(places), visited, counter, newMsg, repo)
 			if err != nil {
 				return nil, err
 			}
-			// update parent
-			parents[i] = res
+
+			if parents[i].Id().String() != res.Id().String() {
+				// update parent
+				parents[i] = res
+				changed = true
+			}
 		}
 	}
 
-	// Get message and update if needed
-	message := commit.Message()
-	if newMsg, ok := newMsg[commit.Id().String()]; ok {
-		message = newMsg
+	// commit has not been changed
+	if !changed {
+		visited[commit.Id().String()] = commit
+		return commit, nil
 	}
 
 	tree, err := commit.Tree()
@@ -85,6 +103,7 @@ func updateCommit(
 	}
 
 	newCommit, err := GetCommit(oid.String(), repo)
+	visited[commit.Id().String()] = newCommit
 	return newCommit, err
 }
 
@@ -93,12 +112,12 @@ func Update(
 	repo *git.Repository,
 	newMsg map[string]string,
 ) (*git.Commit, error) {
-	children := make(map[string][]string)
 	places := map[string]bool{hash: false}
+	visited := make(map[string]*git.Commit)
 	head, err := GetCommit("HEAD", repo)
 	if err != nil {
 		return nil, err
 	}
-	newHead, err := updateCommit(head, places, 0, children, newMsg, repo)
+	newHead, err := updateCommit(head, places, visited, 0, newMsg, repo)
 	return newHead, err
 }
