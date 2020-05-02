@@ -29,8 +29,6 @@ func getParents(commit *git.Commit) []*git.Commit {
 	return parents
 }
 
-var keks = 0
-
 // updateCommit recursively updates
 // all commits dependent of renamed ones.
 // It does this by doing DFS.
@@ -50,6 +48,7 @@ func updateCommit(
 	// Check if current commit is to be renamed
 	cid := commit.Id().String()
 	if visited, ok := places[cid]; ok && !visited {
+		places[cid] = true
 		counter += 1
 	}
 
@@ -108,11 +107,15 @@ func updateCommit(
 }
 
 func Update(
-	hash string,
 	repo *git.Repository,
 	newMsg map[string]string,
 ) (*git.Commit, error) {
-	places := map[string]bool{hash: false}
+	// Prepare commits to be visited
+	places := make(map[string]bool)
+	for k, _ := range newMsg {
+		places[k] = false
+	}
+
 	visited := make(map[string]*git.Commit)
 	head, err := GetCommit("HEAD", repo)
 	if err != nil {

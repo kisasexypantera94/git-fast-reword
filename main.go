@@ -29,11 +29,7 @@ func main() {
 				return err
 			}
 
-			obj, err := utilite.GetCommit(hash, repo)
-			if err != nil {
-				return err
-			}
-			commit, err := obj.AsCommit()
+			commit, err := utilite.GetCommit(hash, repo)
 			if err != nil {
 				return err
 			}
@@ -42,14 +38,14 @@ func main() {
 			newMsg := make(map[string]string)
 			newMsg[start] = msg + "\n"
 
-			newHead, err := utilite.Update(start, repo, newMsg)
+			newHead, err := utilite.Update(repo, newMsg)
 			if err != nil {
 				return err
 			}
 
 			log.Printf("New head: %s", newHead.Id().String())
 
-			ref, err := repo.References.Lookup("refs/heads/master")
+			ref, err := repo.Head()
 			if err != nil {
 				return err
 			}
