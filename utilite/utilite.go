@@ -33,11 +33,11 @@ func getParents(commit *git.Commit) []*git.Commit {
 // all commits dependent of renamed ones.
 // It does this by doing DFS.
 func updateCommit(
-	commit *git.Commit,
-	places map[string]bool,
-	visited map[string]*git.Commit,
-	counter int,
-	newMsg map[string]string,
+	commit *git.Commit,             // current commit
+	places map[string]bool,         // commits to be renamed
+	visited map[string]*git.Commit, // visited commits cache
+	counter int,                    // current number of places visited
+	newMsg map[string]string,       // new messages for commits
 	repo *git.Repository,
 ) (*git.Commit, error) {
 	// Check if current commit was already updated
@@ -61,19 +61,19 @@ func updateCommit(
 		changed = true
 	}
 
-	// if there are still commits to be visited then do recursion
+	// if there are still commits to be renamed then do recursion
 	// and update current commit parents
 	parents := getParents(commit)
 	if counter < len(places) {
-		for i, p := range parents {
+		for i := range parents {
 			// TODO: iterative
-			res, err := updateCommit(p, copyMap(places), visited, counter, newMsg, repo)
+			res, err := updateCommit(parents[i], copyMap(places), visited, counter, newMsg, repo)
 			if err != nil {
 				return nil, err
 			}
 
+			// update parent
 			if parents[i].Id().String() != res.Id().String() {
-				// update parent
 				parents[i] = res
 				changed = true
 			}
@@ -90,6 +90,7 @@ func updateCommit(
 	if err != nil {
 		return nil, err
 	}
+	// create new commit with updated meta
 	oid, err := repo.CreateCommit(
 		"",
 		commit.Author(),
@@ -103,6 +104,7 @@ func updateCommit(
 	}
 
 	newCommit, err := GetCommit(oid.String(), repo)
+	// cache new commit
 	visited[commit.Id().String()] = newCommit
 
 	return newCommit, err
