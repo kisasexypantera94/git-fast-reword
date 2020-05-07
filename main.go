@@ -13,6 +13,21 @@ import (
 	"git-fast-reword/utilite"
 )
 
+func updateAndSetRef(repo *git.Repository, newMsg map[string]string) error {
+	newHead, err := utilite.Update(repo, newMsg)
+	if err != nil {
+		return err
+	}
+	log.Printf("New head: %s", newHead.Id().String())
+
+	ref, err := repo.Head()
+	if err != nil {
+		return err
+	}
+	_, err = ref.SetTarget(newHead.Id(), "")
+	return err
+}
+
 func main() {
 	app := &cli.App{
 		Name:                 "git-fast-reword",
@@ -33,11 +48,11 @@ func main() {
 						return err
 					}
 
-					var cfg map[string]string
 					data, err := ioutil.ReadFile(args.Get(0))
 					if err != nil {
 						return err
 					}
+					var cfg map[string]string
 					err = json.Unmarshal(data, &cfg)
 					if err != nil {
 						return err
@@ -52,19 +67,7 @@ func main() {
 						newMsg[c.Id().String()] = v + "\n"
 					}
 
-					newHead, err := utilite.Update(repo, newMsg)
-					if err != nil {
-						return err
-					}
-
-					log.Printf("New head: %s", newHead.Id().String())
-
-					ref, err := repo.Head()
-					if err != nil {
-						return err
-					}
-					_, err = ref.SetTarget(newHead.Id(), "")
-					return err
+					return updateAndSetRef(repo, newMsg)
 				},
 			},
 		},
@@ -89,19 +92,7 @@ func main() {
 			newMsg := make(map[string]string)
 			newMsg[commit.Id().String()] = msg + "\n"
 
-			newHead, err := utilite.Update(repo, newMsg)
-			if err != nil {
-				return err
-			}
-
-			log.Printf("New head: %s", newHead.Id().String())
-
-			ref, err := repo.Head()
-			if err != nil {
-				return err
-			}
-			_, err = ref.SetTarget(newHead.Id(), "")
-			return err
+			return updateAndSetRef(repo, newMsg)
 		},
 	}
 

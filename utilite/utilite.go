@@ -47,7 +47,7 @@ func updateCommit(
 
 	// Check if current commit is to be renamed
 	cid := commit.Id().String()
-	if visited, ok := places[cid]; ok && !visited {
+	if renamed, ok := places[cid]; ok && !renamed {
 		places[cid] = true
 		counter += 1
 	}
@@ -61,9 +61,9 @@ func updateCommit(
 		changed = true
 	}
 
-	parents := getParents(commit)
 	// if there are still commits to be visited then do recursion
 	// and update current commit parents
+	parents := getParents(commit)
 	if counter < len(places) {
 		for i, p := range parents {
 			// TODO: iterative
@@ -114,7 +114,7 @@ func Update(
 ) (*git.Commit, error) {
 	// Prepare commits to be visited
 	places := make(map[string]bool)
-	for k, _ := range newMsg {
+	for k := range newMsg {
 		places[k] = false
 	}
 
