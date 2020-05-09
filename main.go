@@ -31,7 +31,7 @@ func updateAndSetRef(repo *git.Repository, newMsg map[string]string) error {
 func main() {
 	app := &cli.App{
 		Name:                 "git-fast-reword",
-		Usage:                "git-fast-reword hash new_message",
+		Usage:                "fast commits rewording",
 		EnableBashCompletion: true,
 		Commands: []*cli.Command{
 			{
