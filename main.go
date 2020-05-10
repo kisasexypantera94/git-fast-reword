@@ -4,28 +4,32 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 
-	"github.com/libgit2/git2go/v30"
 	"github.com/urfave/cli/v2"
 
 	"git-fast-reword/utilite"
 )
 
-func updateAndSetRef(repo *git.Repository, newMsg map[string]string) error {
-	newHead, err := utilite.Update(repo, newMsg)
+func prettyMap(m map[string]string) (string, error) {
+	pretty, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
-		return err
+		return "", err
 	}
-	log.Printf("New head: %s", newHead.Id().String())
+	return string(pretty), nil
+}
 
-	ref, err := repo.Head()
+func update(cfg map[string]string) error {
+	newHashes, err := utilite.Update(".git", cfg)
 	if err != nil {
 		return err
 	}
-	_, err = ref.SetTarget(newHead.Id(), "")
-	return err
+	pretty, err := prettyMap(newHashes)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("New hashes:\n%s\n", pretty)
+	return nil
 }
 
 func main() {
@@ -43,11 +47,6 @@ func main() {
 						return fmt.Errorf("invalid number of arguments")
 					}
 
-					repo, err := git.OpenRepository(".git")
-					if err != nil {
-						return err
-					}
-
 					data, err := ioutil.ReadFile(args.Get(0))
 					if err != nil {
 						return err
@@ -58,16 +57,7 @@ func main() {
 						return err
 					}
 
-					newMsg := make(map[string]string)
-					for k, v := range cfg {
-						c, err := utilite.GetCommit(k, repo)
-						if err != nil {
-							return err
-						}
-						newMsg[c.Id().String()] = v + "\n"
-					}
-
-					return updateAndSetRef(repo, newMsg)
+					return update(cfg)
 				},
 			},
 		},
@@ -79,20 +69,7 @@ func main() {
 			hash := args.Get(0)
 			msg := args.Get(1)
 
-			repo, err := git.OpenRepository(".git")
-			if err != nil {
-				return err
-			}
-
-			commit, err := utilite.GetCommit(hash, repo)
-			if err != nil {
-				return err
-			}
-
-			newMsg := make(map[string]string)
-			newMsg[commit.Id().String()] = msg + "\n"
-
-			return updateAndSetRef(repo, newMsg)
+			return update(map[string]string{hash: msg})
 		},
 	}
 

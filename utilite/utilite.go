@@ -12,7 +12,32 @@ func copyMap(m map[string]bool) map[string]bool {
 	return nm
 }
 
-func GetCommit(hash string, repo *git.Repository) (*git.Commit, error) {
+func convertToHashes(repo *git.Repository, m map[string]string) (map[string]string, map[string]string, error) {
+	newMsg := make(map[string]string)
+	translator := make(map[string]string)
+	for k, v := range m {
+		c, err := getCommit(k, repo)
+		if err != nil {
+			return nil, nil, err
+		}
+		newMsg[c.Id().String()] = v + "\n"
+		translator[c.Id().String()] = k
+	}
+	return newMsg, translator, nil
+}
+
+// Map new commit hashes back to commit names from config
+func convertFromHashes(newHashes map[string]string, translator map[string]string) map[string]string {
+	translatedBack := make(map[string]string)
+	for k, v := range newHashes {
+		if t, ok := translator[k]; ok {
+			translatedBack[t] = v
+		}
+	}
+	return translatedBack
+}
+
+func getCommit(hash string, repo *git.Repository) (*git.Commit, error) {
 	obj, err := repo.RevparseSingle(hash)
 	if err != nil {
 		return nil, err
@@ -38,6 +63,7 @@ func updateCommit(
 	visited map[string]*git.Commit, // visited commits cache
 	counter int,                    // current number of places visited
 	newMsg map[string]string,       // new messages for commits
+	newHashes map[string]string,    // new hashes of reworded commits
 	repo *git.Repository,
 ) (*git.Commit, error) {
 	// Check if current commit was already updated
@@ -67,7 +93,15 @@ func updateCommit(
 	if counter < len(places) {
 		for i := range parents {
 			// TODO: iterative
-			res, err := updateCommit(parents[i], copyMap(places), visited, counter, newMsg, repo)
+			res, err := updateCommit(
+				parents[i],
+				copyMap(places),
+				visited,
+				counter,
+				newMsg,
+				newHashes,
+				repo,
+			)
 			if err != nil {
 				return nil, err
 			}
@@ -103,28 +137,60 @@ func updateCommit(
 		return nil, err
 	}
 
-	newCommit, err := GetCommit(oid.String(), repo)
+	newCommit, err := getCommit(oid.String(), repo)
 	// cache new commit
 	visited[commit.Id().String()] = newCommit
+	newHashes[commit.Id().String()] = oid.String()
 
 	return newCommit, err
 }
 
 func Update(
-	repo *git.Repository,
-	newMsg map[string]string,
-) (*git.Commit, error) {
+	repoPath string,
+	cfg map[string]string,
+) (map[string]string, error) {
+	// Open repository
+	repo, err := git.OpenRepository(repoPath)
+	if err != nil {
+		return nil, err
+	}
+	// Convert commits to hashes if needed
+	newMsg, translator, err := convertToHashes(repo, cfg)
+	if err != nil {
+		return nil, err
+	}
 	// Prepare commits to be visited
 	places := make(map[string]bool)
 	for k := range newMsg {
 		places[k] = false
 	}
-
-	visited := make(map[string]*git.Commit)
-	head, err := GetCommit("HEAD", repo)
+	// Get current HEAD
+	head, err := getCommit("HEAD", repo)
 	if err != nil {
 		return nil, err
 	}
-	newHead, err := updateCommit(head, places, visited, 0, newMsg, repo)
-	return newHead, err
+	visited := make(map[string]*git.Commit)
+	newHashes := make(map[string]string)
+	newHead, err := updateCommit(
+		head,
+		places,
+		visited,
+		0,
+		newMsg,
+		newHashes,
+		repo,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get HEAD reference
+	ref, err := repo.Head()
+	if err != nil {
+		return nil, err
+	}
+	// Update it
+	_, err = ref.SetTarget(newHead.Id(), "")
+
+	return convertFromHashes(newHashes, translator), err
 }

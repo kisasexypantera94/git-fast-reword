@@ -13,8 +13,17 @@ brew install libgit2
 $ go install
 ```
 
-## Запуск
+## Запуск и тестирование
 ```zsh
+➜  git-fast-reword git:(master) ✗ make test
+go build
+cd utilite/testdata/django-like-queryset ; git reset --hard
+HEAD сейчас на be51798 Update README.md
+go test ./...
+?       git-fast-reword [no test files]
+ok      git-fast-reword/utilite 0.454s
+
+➜  git-fast-reword git:(master) ✗ cd intellij-community 
 ➜  intellij-community git:(master) git-fast-reword -h
 NAME:
    git-fast-reword - git-fast-reword hash new_message

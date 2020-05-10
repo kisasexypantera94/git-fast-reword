@@ -1,0 +1,6 @@
+*ipynb*
+.vscode*
+.Python
+.mypy*
+*idea
+*pycache*
