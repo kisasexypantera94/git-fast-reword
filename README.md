@@ -38,16 +38,21 @@ COMMANDS:
 GLOBAL OPTIONS:
    --help, -h  show help (default: false)
  
-➜  intellij-community git:(master) cat ../test.json 
+➜  intellij-community git:(master) cat test.json 
 {
   "HEAD~31": "renamed HEAD~31",
   "HEAD~53": "renamed HEAD~53",
   "HEAD~173": "renamed HEAD~173"
 }
 
-➜  intellij-community git:(master) time git-fast-reword from-file ../test.json
-2020/05/10 01:36:24 New head: a7287eff6f0e3f4196623b7c94dd6f0dc414d423
-git-fast-reword from-file ../test.json  0,04s user 0,10s system 19% cpu 0,734 total
+➜  intellij-community git:(master) ✗ time git-fast-reword ff test.json
+New hashes:
+{
+  "HEAD~173": "5d4cf25f2a99cd0fda742e206b109a9d19b2fe54",
+  "HEAD~31": "24970821f817f3e2a36e9f6215b3a4e037244e0b",
+  "HEAD~53": "f8eac669e619493ad7026d64151a127c90102d44"
+}
+git-fast-reword ff test.json  0,02s user 0,02s system 17% cpu 0,201 total
 
 ➜  intellij-community git:(master) git cat-file -p HEAD~31
 tree 9876e6a8a3d9eb076d5787b4e54478409662ad7d
@@ -74,10 +79,20 @@ committer intellij-monorepo-bot <intellij-monorepo-bot-no-reply@jetbrains.com> 1
 renamed HEAD~173
 
 # случай, описанный ниже
-➜  intellij-community git:(master) time git-fast-reword 13b78e06c18e2da98674b688e56df0b53b9fed76 "s bogom"
-2020/05/10 01:42:03 New head: 26a3c1e5d52e5f83d792adbfbaee7bb763f86da2
-git-fast-reword 13b78e06c18e2da98674b688e56df0b53b9fed76 "s bogom"  6,21s user 0,93s system 76% cpu 9,319 total
+➜  intellij-community git:(master) ✗ time git-fast-reword 13b78e06c18e2da98674b688e56df0b53b9fed76 "s bogom"
+New hashes:
+{
+  "13b78e06c18e2da98674b688e56df0b53b9fed76": "8abaf5f64dee96bf5f1256daff3b3f6d32b1c070"
+}
+git-fast-reword 13b78e06c18e2da98674b688e56df0b53b9fed76 "s bogom"  6,52s user 0,73s system 92% cpu 7,818 total
 
+➜  intellij-community git:(master) ✗ git cat-file -p 8abaf5f64dee96bf5f1256daff3b3f6d32b1c070
+tree 60210d988e0eeb730544264e77a20b7cdda3ceb5
+parent 28adfdb1e958083068562aa9909437d4db51f312
+author Ivan Chirkov <Ivan.Chirkov@jetbrains.com> 1587490014 +0200
+committer intellij-monorepo-bot <intellij-monorepo-bot-no-reply@jetbrains.com> 1587540666 +0000
+
+s bogom
 
 ```
 
