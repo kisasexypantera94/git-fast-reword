@@ -29,10 +29,8 @@ func convertToHashes(repo *git.Repository, m map[string]string) (map[string]stri
 // Map new commit hashes back to commit names from config
 func convertFromHashes(newHashes map[string]string, translator map[string]string) map[string]string {
 	translatedBack := make(map[string]string)
-	for k, v := range newHashes {
-		if t, ok := translator[k]; ok {
-			translatedBack[t] = v
-		}
+	for k, v := range translator {
+		translatedBack[v] = newHashes[k]
 	}
 	return translatedBack
 }
