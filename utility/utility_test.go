@@ -1,4 +1,4 @@
-package utilite
+package utility
 
 import (
 	"testing"
@@ -7,6 +7,7 @@ import (
 )
 
 var DjangoLikeQueryset = "testdata/django-like-queryset/.git"
+var Intellij = "/Users/chingachgook/dev/git-fast-reword/intellij-community/.git"
 
 func TestUpdate(t *testing.T) {
 	type args struct {
@@ -39,6 +40,17 @@ func TestUpdate(t *testing.T) {
 					"HEAD~3": "renamed HEAD~3",
 				}},
 			true,
+		},
+		{
+			"long",
+			args{
+				Intellij,
+				map[string]string{
+					"HEAD~1": "renamed HEAD~1",
+					"HEAD~3": "renamed HEAD~3",
+					"HEAD~1001": "renamed HEAD~10001",
+				}},
+			false,
 		},
 	}
 	for _, tt := range tests {

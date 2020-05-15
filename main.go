@@ -8,7 +8,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"git-fast-reword/utilite"
+	"git-fast-reword/utility"
 )
 
 func prettyMap(m map[string]string) (string, error) {
@@ -20,7 +20,7 @@ func prettyMap(m map[string]string) (string, error) {
 }
 
 func update(cfg map[string]string) error {
-	newHashes, err := utilite.Update(".git", cfg)
+	newHashes, err := utility.Update(".git", cfg)
 	if err != nil {
 		return err
 	}

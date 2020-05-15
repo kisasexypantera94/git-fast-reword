@@ -1,4 +1,4 @@
-package utilite
+package utility
 
 import (
 	git "github.com/libgit2/git2go/v30"
