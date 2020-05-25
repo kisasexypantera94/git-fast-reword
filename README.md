@@ -1,6 +1,6 @@
 # git-fast-reword
 
-## Зависимости
+## Dependencies
 * libgit2  
 
 #### macOS
@@ -8,12 +8,12 @@
 brew install libgit2
 ```
 
-## Сборка и установка 
+## Setup
 ```zsh
 $ go install
 ```
 
-## Запуск и тестирование
+## Usage
 ```zsh
 ➜  git-fast-reword git:(master) ✗ make test
 go build
@@ -78,7 +78,7 @@ committer intellij-monorepo-bot <intellij-monorepo-bot-no-reply@jetbrains.com> 1
 
 renamed HEAD~173
 
-# случай, описанный ниже
+# bad case described below
 ➜  intellij-community git:(master) ✗ time git-fast-reword 13b78e06c18e2da98674b688e56df0b53b9fed76 "s bogom"
 New hashes:
 {
@@ -96,20 +96,19 @@ s bogom
 
 ```
 
-## Алгоритм
-Утилита поиском в глубину обходит коммиты и обновляет их по надобности.
-Рекурсия прекращается как только посещены все коммиты с новыми сообщениями,
-поэтому в большинстве случаев утилита обойдет лишь малую часть графа.
-Поскольку возможно существование пути между любыми двумя коммитами, то также
-возможна такая ситуация:  
+## Algorithm
+The utility traverses commits by doing DFS and updates them as needed.
+Recursion stops as soon as all commits with new messages are visited,
+therefore, in most cases, the utility will traverse only a small part of the graph.
+Since there may be a path between any two commits, then also
+this situation is possible:  
 ![](assets/bad_case.png)  
-Допустим мы хотим переименовать коммит `2`. 
-Поиск будет идти в следующем порядке: `0->1->2` – тут мы увидели,
-что посетили все коммиты с новыми сообщениями (в этой ветке) и прерываем рекурсию.
-Далее поиск пойдет в вершину `3` и так как мы не знаем наперед есть ли путь из этой
-вершины в вершину `2`, то нам придется обойти весь граф до самого дна.
-Ориентироваться на время коммита (как commiter, так и author) не вариант, поскольку
-оно могло быть изменено до этого командой `rebase`. Я так и не придумал как можно
-гарантировано избежать спуска на дно.
-Поскольку даже в худшем случае утилита работает в пределах 10-13 секунд на репозитории
-`IntelliJ IDEA Community Edition`, то я не стал париться и оставил все как есть.
+Suppose we want to rename the commit `2`.
+The search will go in the following order: `0-> 1-> 2` - here we saw
+that we’ve visited all commits with new messages (in this branch) and the recursion is stopped.
+Further, the search will go to `3` and since we do not know in advance whether there is a path to `2`, 
+then we have to traverse the entire graph to the very bottom.
+Looking at commit time (both commiter and author) is not an option, since
+it could have been changed before using `rebase` command. 
+Since even in the worst case the utility runs within 10-13 seconds on the 
+`IntelliJ IDEA Community Edition` repository, I did not bother and left everything as it is.
